@@ -18,14 +18,17 @@ def search(start, destination, date, time):
     source = request.text    
     soup = BeautifulSoup(source, features="html5lib")
     
-    ticket = soup.find("td", {"class": "fare has-cheapest"}) #cheapest ticket returned
-    ticket = ticket.find("label", {"class": "opsingle"})
-    ticket = ticket.get_text().strip() #clean and retrieve ticket price
-    
-    train = soup.find("tr", {"class": "first mtx"})    
-    leaves = train.find("div", {"class": "dep"})
-    leaves = leaves.get_text().strip()
-    arr = train.find("div", {"class": "arr"})
-    arr = arr.get_text().strip()
-    
-    return ticket, url, leaves, arr #TODO return train details
+    try: 
+        ticket = soup.find("td", {"class": "fare has-cheapest"}) #cheapest ticket returned
+        ticket = ticket.find("label", {"class": "opsingle"})
+        ticket = ticket.get_text().strip() #clean and retrieve ticket price
+        
+        train = soup.find("tr", {"class": "first mtx"})    
+        leaves = train.find("div", {"class": "dep"})
+        leaves = leaves.get_text().strip()
+        arr = train.find("div", {"class": "arr"})
+        arr = arr.get_text().strip()
+        
+        return ticket, url, leaves, arr #TODO return train details
+    except:
+        return None #no tickets found on page

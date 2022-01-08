@@ -20,17 +20,23 @@ import scraper2
 
 #LOAD EXTERNAL FILES
 intents = json.load(open('intents.json'))
-
+#intent classes and vocab derived from intents.json
 with open('classes.pickle', 'rb') as f:
     classes = pickle.load(f)
 with open('known_words.pickle', 'rb') as f:
     known_words = pickle.load(f)
     
-model = load_model("nlp.h5")
+model = load_model("nlp.h5") #nn for nlp
 
 #Language processing
 ignore = [",", ".", "!", "?"] #put any ignored characters here
 slang_dict = {'st':'street', 'rd':'road'} #TODO add more
+
+#state for storing data about bot's knowledge in a subtopic
+class State:
+    def __init__(self, last_response, params):
+        self.last_response = last_response
+        self.params = params
 
 def parse_input():
     query = input() #take user input
@@ -83,17 +89,21 @@ def response(rq, query):
                  ["time", None, "TIME", "What time do you want to travel? (note: currently only supports 24 hour time in ##:## format)\n"]]
 
         valid = False #valid is false until enough data is gathered for search
-        params = preen(query, params) #initial search for parameters
+        
+        state = State(None, params)
+        state.params = preen(query, state) #initial search for parameters
 
         while valid == False:
             valid = True
-            for req in params:
+            for req in state.params:
                 if req[1] == None: #not all data retrieved, keep pressing
                     valid = False
                     dialogue = input(req[3]) #ask q associated with data
+                    state.last_response = req[3]
                     dialogue = clean(dialogue)
-                    params = preen(dialogue, params)
+                    state.params = preen(dialogue, state)
         #pass acquired data to scraper for ticket retrieval
+        params = state.params
         find_ticket(params[0][1], params[1][1], params[2][1], params[3][1])
                 
 
@@ -105,12 +115,17 @@ def find_ticket(start, destination, date, time):
     time.strip()
     #call the scraper module to get ticket/train info
     data = scraper2.search(start, destination, date, time)
-    print("The cheapest ticket is " + data[0])
-    print("Leaves at " + data[2] + " and arrives at " + data[3])
-    print("Purchase at: " + data[1])
+    
+    if data == None:
+        print("Sorry, no tickets were found for your requirements.")
+    else:
+        print("The cheapest ticket is " + data[0])
+        print("Leaves at " + data[2] + " and arrives at " + data[3])
+        print("Purchase at: " + data[1])
 
-def preen(dialogue, params):
+def preen(dialogue, state):
     #create an array of null values to represent parameters
+    params = state.params
     data = [None] * len(params) 
     
     #fill data with any parameters already known
@@ -125,7 +140,7 @@ def preen(dialogue, params):
         for i in range(len(data)):
             if data[i] == None: #prevent from overwriting known data
                 if params[i][2] == ent.label_: #entity type matches required data
-                    if preen_context(dialogue, ent) != None and preen_context(dialogue, ent) != params[i][0]:
+                    if preen_context(dialogue, ent, state) != None and preen_context(dialogue, ent, state) != params[i][0]:
                         pass
                     else:
                         data[i] = ent.text
@@ -139,15 +154,16 @@ def preen(dialogue, params):
             params[i][1] = regex_check(dialogue, params[i][2])
     return params
 
-def preen_context(dialogue, ent):
+def preen_context(dialogue, ent, state):
     #helper method that detects the word before an entity to infer the context
     start = ["from", "at"]
-    dest = ["to", "toward", "towards"]
+    dest = ["to", "toward", "towards", "into"]
+    
     if ent.label_ == "GPE":
         context = str(dialogue[ent.start - 1])
-        if context in start:
+        if context in start or state.last_response == state.params[0][3]:
             return "start"
-        if context in dest:
+        if context in dest or state.last_response == state.params[1][3]:
             return "destination"
     #TODO add time
     return None
@@ -164,7 +180,6 @@ def regex_check(dialogue, ent_type):
         
         #ref https://spacy.io/usage/rule-based-matching
         for match_id, start, end in matches:
-            string_id = nlp.vocab.strings[match_id]
             span = dialogue[start:end]
             return span.text
 
