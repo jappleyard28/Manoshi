@@ -23,7 +23,7 @@ def search(start, destination, date, time):
         ticket = ticket.find("label", {"class": "opsingle"})
         ticket = ticket.get_text().strip() #clean and retrieve ticket price
         
-        train = soup.find("tr", {"class": "first mtx"})    
+        train = soup.find("td", {"class": "fare has-cheapest"}).parent  
         leaves = train.find("div", {"class": "dep"})
         leaves = leaves.get_text().strip()
         arr = train.find("div", {"class": "arr"})

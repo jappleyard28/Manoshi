@@ -23,6 +23,14 @@
               "patterns": ["My train is delayed", "My train is running late"],
               "responses": ["I can help predict your arrival time."]
              },
+             {"tag": "cancel",
+              "patterns": ["Cancel", "Nevermind", "nvm", "I changed my mind"],
+              "responses": ["Ok, can I help with anything else?", "Alright, need anything else?"]
+             },
+             {"tag": "datanotfound",
+              "patterns": [],
+              "responses": ["Sorry, I didn't catch that.", "Sorry, can you check your answer again?", "Sorry, please try rewording your answer."]
+             },
              {"tag": "notunderstood",
               "patterns": [],
               "responses": ["Sorry, I cannot help with that.", "Sorry, I do not understand."]}

@@ -8,6 +8,7 @@ Created on Thu Dec  9 16:15:04 2021
 import spacy
 from spacy.matcher import Matcher
 nlp = spacy.load("en_core_web_md")
+from spacy.pipeline import EntityRuler
 
 import re
 import numpy as np
@@ -30,7 +31,8 @@ model = load_model("nlp.h5") #nn for nlp
 
 #Language processing
 ignore = [",", ".", "!", "?"] #put any ignored characters here
-slang_dict = {'st':'street', 'rd':'road'} #TODO add more
+
+slang_dict = {'st':'street', 'rd':'road', 'ave':'avenue',} #TODO add more
 
 #state for storing data about bot's knowledge in a subtopic
 class State:
@@ -38,8 +40,7 @@ class State:
         self.last_response = last_response
         self.params = params
 
-def parse_input():
-    query = input() #take user input
+def parse_input(query):
     query = clean(query) #clean and tokenize user input for parsing
     
     #create bag of words, metric used by neural network
@@ -65,10 +66,10 @@ def parse_input():
     results = sorted(results, key=lambda tup: tup[0], reverse=True)
     
     if results[0][0] > threshold:
-        response(results[0][1], query) 
+        return results[0][1], query
         #pass the most likely intent to response output
     else:
-        response("notunderstood", query)
+        return "notunderstood", query
         #no reasonable response was found
         
 def speak(intent):
@@ -77,17 +78,12 @@ def speak(intent):
     for pattern in intents['intents']:
         if pattern['tag'] == intent:
             print(np.random.choice(pattern['responses']))
-        
-def response(rq, query):
-    speak(rq)
+
+def response(intent, params, query):
+    speak(intent)
     
     #these are further dialogues when the bot needs to take input
-    if rq == "book":
-        params = [["start", None, "GPE", "Where are you travelling from?\n"],
-                 ["destination", None, "GPE", "Where would you like to travel to?\n"],
-                 ["date", None, "DATE", "What date are you travelling?\n"],
-                 ["time", None, "TIME", "What time do you want to travel? (note: currently only supports 24 hour time in ##:## format)\n"]]
-
+    if intent == "book":
         valid = False #valid is false until enough data is gathered for search
         
         state = State(None, params)
@@ -96,17 +92,21 @@ def response(rq, query):
         while valid == False:
             valid = True
             for req in state.params:
-                if req[1] == None: #not all data retrieved, keep pressing
+                while req[1] == None: #not all data retrieved, keep pressing
                     valid = False
                     dialogue = input(req[3]) #ask q associated with data
                     state.last_response = req[3]
-                    dialogue = clean(dialogue)
+                    intent, dialogue = parse_input(dialogue)
+                    if intent == 'cancel':
+                        return 'CANCEL'
                     state.params = preen(dialogue, state)
+                    if req[1] == None:
+                        speak('datanotfound')
         #pass acquired data to scraper for ticket retrieval
         params = state.params
-        find_ticket(params[0][1], params[1][1], params[2][1], params[3][1])
-                
-
+        return params
+        #find_ticket(params[0][1], params[1][1], params[2][1], params[3][1])
+        
 def find_ticket(start, destination, date, time):
     #some regex for reformatting date/time (remove punctuation/symbols)
     date = re.sub(r'[^\w\s]', "", date)
@@ -171,18 +171,24 @@ def preen_context(dialogue, ent, state):
 def regex_check(dialogue, ent_type):
     #regex for catching format ##:## as nlp sometimes misses them
     #TODO add more formats
+    matcher = Matcher(nlp.vocab)
     if ent_type == "TIME":
-        matcher = Matcher(nlp.vocab)
         pattern = [{"TEXT": {"REGEX": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"}}]
         matcher.add("TIME", [pattern])
+    if ent_type == "DATE":
+        #ref: https://stackoverflow.com/questions/15491894/regex-to-validate-date-formats-dd-mm-yyyy-dd-mm-yyyy-dd-mm-yyyy-dd-mmm-yyyy
+        pattern = [{"TEXT": {"REGEX": r'^(?:(?:31(\/|-|\.)(?:0?[13578]|1[02]))\1|(?:(?:29|30)(\/|-|\.)(?:0?[13-9]|1[0-2])\2))(?:(?:1[6-9]|[2-9]\d)?\d{2})$|^(?:29(\/|-|\.)0?2\3(?:(?:(?:1[6-9]|[2-9]\d)?(?:0[48]|[2468][048]|[13579][26])|(?:(?:16|[2468][048]|[3579][26])00))))$|^(?:0?[1-9]|1\d|2[0-8])(\/|-|\.)(?:(?:0?[1-9])|(?:1[0-2]))\4(?:(?:1[6-9]|[2-9]\d)?\d{2})$'}}]
+        matcher.add("DATE", [pattern])
+    else:
+        return None
+    matches = matcher(dialogue)
     
-        matches = matcher(dialogue)
+    #ref https://spacy.io/usage/rule-based-matching
+    for match_id, start, end in matches:
+        span = dialogue[start:end]
+        print("RETURNING REGEX: " + str(span.text))
+        return span.text
         
-        #ref https://spacy.io/usage/rule-based-matching
-        for match_id, start, end in matches:
-            span = dialogue[start:end]
-            return span.text
-
 
 def clean(token):
     #cleans text, lemmatizing and lowercase
@@ -192,9 +198,7 @@ def clean(token):
     new_token = []
     for word in token.split():
         if word.lower() in slang_dict:
-            print("Found slang: " + word)
             new_token.append(slang_dict[word.lower()])
-            print("Converted to dictionary word: " + word)
         else:
             new_token.append(word)
     token = ' '.join(new_token)
@@ -205,6 +209,33 @@ def clean(token):
             ret.append(word.lemma_.lower()) #get lemmatized form of word
     return ret
 
-speak("greeting")
-while True:
-    parse_input()
+def stations():
+    #updates nlp ner with station names + codes from file
+    my_file = open("station_codes (07-12-2020).csv", "r")
+    content = my_file.read()
+    content = list(filter(None, re.split(",|\n", content)))
+    
+    pattern = []
+    for i in range(len(content)):
+        content[i] = content[i].lower()
+        pattern.append({"label": "GPE", "pattern": content[i]})
+        
+    with open("stations.pickle", 'wb') as f:
+        pickle.dump(pattern, f)
+
+try:
+    print("Loading stations.pickle...")
+    with open('stations.pickle', 'rb') as f:
+        pattern = pickle.load(f)
+except FileNotFoundError:
+    print("stations.pickle not found, creating file...")
+    stations()
+    with open('stations.pickle', 'rb') as f:
+        pattern = pickle.load(f)
+ 
+config = {"overwrite_ents": True}
+station_list = nlp.add_pipe("entity_ruler", config=config)
+station_list.add_patterns(pattern)
+
+if __name__ == "__main__":
+    speak("greeting")
