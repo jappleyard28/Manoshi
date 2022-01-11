@@ -10,6 +10,10 @@ from experta import *
 from experta.utils import unfreeze
 
 import nlp
+
+def fire_message(text):
+    #will be used to pass chatbot dialogue to ui
+    print("Firing a message: " + text)
     
 class Chatbot(KnowledgeEngine):  
     @DefFacts()
@@ -17,10 +21,11 @@ class Chatbot(KnowledgeEngine):
         yield Fact(request=False, reqs=None)
         
     @Rule(AND(NOT(Fact(intent='book')),
-              NOT(Fact(intent='cancel'))),
+              NOT(Fact(intent='cancel')),
+              NOT(Fact(intent='delay'))),
           Fact(intent=MATCH.intent))
     def chat(self, intent):
-        nlp.speak(intent)
+        fire_message(nlp.speak(intent))
         
     @Rule(AS.intent << Fact(intent='book'),
           AS.active << Fact(request=False, reqs=None),
@@ -32,15 +37,57 @@ class Chatbot(KnowledgeEngine):
                  ["date", None, "DATE", "What date are you travelling?\n"],
                  ["time", None, "TIME", "What time do you want to travel? (note: currently only supports 24 hour time in ##:## format)\n"]]
         self.modify(active, request=True, reqs='book')
-        returned_params = nlp.response("book", reqs, message) #parse input for named entities
-        if returned_params == 'CANCEL':
-            self.modify(intent, intent='cancel')
-        else:
-            #does chatbot have enough data to compute the request
-            is_valid = not any(None in l for l in returned_params)
-            
-            self.declare(Fact(params=returned_params))
-            self.declare(Fact(valid=is_valid))
+        
+        fire_message(nlp.speak('book'))
+        message = unfreeze(message)
+        returned_params = nlp.response(reqs, message, None) #parse input for named entities
+
+        is_valid = not any(None in l for l in returned_params)
+        
+        self.declare(Fact(params=returned_params))
+        self.declare(Fact(valid=is_valid))
+    
+    @Rule(AS.intent << Fact(intent='delay'),
+          AS.active << Fact(request=False, reqs=None),
+          Fact(message=MATCH.message))
+    def delaying(self, active, message, intent):
+        #define appropriate params [param_name, value, entity_type, question]
+        reqs = [["start", None, "GPE", "Where did you depart from?"],
+                 ["destination", None, "GPE", "Where are you travelling to?"],
+                 ["time", None, "TIME", "When was the planned departure time?"],
+                 ["time", None, "TIME", "When is your actual departure time?"]]
+        self.modify(active, request=True, reqs='delay')
+        
+        fire_message(nlp.speak('delay'))
+        message = unfreeze(message)
+        returned_params = nlp.response(reqs, message, None) #parse input for named entities
+
+        is_valid = not any(None in l for l in returned_params)
+        
+        self.declare(Fact(params=returned_params))
+        self.declare(Fact(valid=is_valid))
+        
+    @Rule(Fact(request=True, reqs=MATCH.reqs),
+          AS.validity << Fact(valid=False),
+          Fact(params=MATCH.params),
+          AS.cur_intent << Fact(intent=MATCH.intent),
+          AS.old_params << Fact(params=MATCH.params))
+    def req_inprocess(self, reqs, validity, params, cur_intent, old_params):
+        params = unfreeze(params)
+        returned_params = None
+        for req in params:
+            while req[1] == None:
+                fire_message(req[3])
+                message = input()
+                returned_params = nlp.response(params, message, req[3])
+                if returned_params == 'CANCEL':
+                    self.modify(cur_intent, intent='cancel')
+                    return
+                if req[1] == None:
+                    fire_message(nlp.speak('datanotfound'))
+        self.modify(old_params, params=returned_params)
+        is_valid = not any(None in l for l in returned_params)
+        self.modify(validity, valid=is_valid)
         
     @Rule(AND(Fact(reqs='book'),
              Fact(valid=True)),
@@ -48,24 +95,34 @@ class Chatbot(KnowledgeEngine):
     def find_ticket(self, params):
         params = unfreeze(params)
         #with all parameters, begin web scraping for ticket
-        nlp.find_ticket(params[0][1], params[1][1], params[2][1], params[3][1])
+        fire_message(nlp.find_ticket(params[0][1], params[1][1], params[2][1], params[3][1]))
         engine.reset() #reset facts for next interaction
+        
+    @Rule(AND(Fact(reqs='delay'),
+             Fact(valid=True)),
+             Fact(params=MATCH.params))
+    def find_ticket(self, params):
+        params = unfreeze(params)
+        fire_message("PUT DELAY PREDICTION PROCESS HERE")
+        engine.reset()
     
     @Rule(AND(Fact(intent='cancel'),
       Fact(request=True)),
           salience=100)
     def cancel(self):
-        nlp.speak("cancel")
+        fire_message(nlp.speak("cancel"))
+        engine.reset()
         #self.declare(Fact(request=False, reqs=None)) #cancel current transaction
         
     @Rule(AND(Fact(intent='cancel'),
       Fact(request=False)))
     def wtf(self):
-        nlp.speak("notunderstood")
+        fire_message(nlp.speak("notunderstood"))
 
-nlp.speak("greeting")      
+
 engine = Chatbot()
-engine.reset()     
+engine.reset() 
+fire_message(nlp.speak("greeting"))       
 while True:
     msg = nlp.parse_input(input())
     engine.declare(Fact(intent=msg[0]))

@@ -77,35 +77,24 @@ def speak(intent):
     #determines what the chatboy says
     for pattern in intents['intents']:
         if pattern['tag'] == intent:
-            print(np.random.choice(pattern['responses']))
+            return np.random.choice(pattern['responses'])
 
-def response(intent, params, query):
-    speak(intent)
+def response(params, query, last_response):
     
     #these are further dialogues when the bot needs to take input
-    if intent == "book":
-        valid = False #valid is false until enough data is gathered for search
-        
-        state = State(None, params)
-        state.params = preen(query, state) #initial search for parameters
+    valid = False #valid is false until enough data is gathered for search
+    
+    state = State(None, params)
 
-        while valid == False:
-            valid = True
-            for req in state.params:
-                while req[1] == None: #not all data retrieved, keep pressing
-                    valid = False
-                    dialogue = input(req[3]) #ask q associated with data
-                    state.last_response = req[3]
-                    intent, dialogue = parse_input(dialogue)
-                    if intent == 'cancel':
-                        return 'CANCEL'
-                    state.params = preen(dialogue, state)
-                    if req[1] == None:
-                        speak('datanotfound')
-        #pass acquired data to scraper for ticket retrieval
-        params = state.params
-        return params
-        #find_ticket(params[0][1], params[1][1], params[2][1], params[3][1])
+    state.last_response = last_response
+    intent, dialogue = parse_input(query)
+    if intent == 'cancel':
+        return 'CANCEL'
+    state.params = preen(dialogue, state)
+    #pass acquired data to scraper for ticket retrieval
+    params = state.params
+    return params
+    #find_ticket(params[0][1], params[1][1], params[2][1], params[3][1])
         
 def find_ticket(start, destination, date, time):
     #some regex for reformatting date/time (remove punctuation/symbols)
@@ -117,11 +106,9 @@ def find_ticket(start, destination, date, time):
     data = scraper2.search(start, destination, date, time)
     
     if data == None:
-        print("Sorry, no tickets were found for your requirements.")
+        return "Sorry, no tickets were found for your requirements."
     else:
-        print("The cheapest ticket is " + data[0])
-        print("Leaves at " + data[2] + " and arrives at " + data[3])
-        print("Purchase at: " + data[1])
+        return "The cheapest ticket is " + data[0] + "\nLeaves at " + data[2] + " and arrives at " + data[3] + "\nPurchase at: " + data[1]
 
 def preen(dialogue, state):
     #create an array of null values to represent parameters
@@ -150,8 +137,7 @@ def preen(dialogue, state):
     for i in range(len(params)):
         params[i][1] = data[i] #put data into updated param list, and return
         #try regex as an additional layer after NER
-        if params[i][1] == None:
-            params[i][1] = regex_check(dialogue, params[i][2])
+
     return params
 
 def preen_context(dialogue, ent, state):
@@ -167,27 +153,6 @@ def preen_context(dialogue, ent, state):
             return "destination"
     #TODO add time
     return None
-
-def regex_check(dialogue, ent_type):
-    #regex for catching format ##:## as nlp sometimes misses them
-    #TODO add more formats
-    matcher = Matcher(nlp.vocab)
-    if ent_type == "TIME":
-        pattern = [{"TEXT": {"REGEX": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"}}]
-        matcher.add("TIME", [pattern])
-    if ent_type == "DATE":
-        #ref: https://stackoverflow.com/questions/15491894/regex-to-validate-date-formats-dd-mm-yyyy-dd-mm-yyyy-dd-mm-yyyy-dd-mmm-yyyy
-        pattern = [{"TEXT": {"REGEX": r'^(?:(?:31(\/|-|\.)(?:0?[13578]|1[02]))\1|(?:(?:29|30)(\/|-|\.)(?:0?[13-9]|1[0-2])\2))(?:(?:1[6-9]|[2-9]\d)?\d{2})$|^(?:29(\/|-|\.)0?2\3(?:(?:(?:1[6-9]|[2-9]\d)?(?:0[48]|[2468][048]|[13579][26])|(?:(?:16|[2468][048]|[3579][26])00))))$|^(?:0?[1-9]|1\d|2[0-8])(\/|-|\.)(?:(?:0?[1-9])|(?:1[0-2]))\4(?:(?:1[6-9]|[2-9]\d)?\d{2})$'}}]
-        matcher.add("DATE", [pattern])
-    else:
-        return None
-    matches = matcher(dialogue)
-    
-    #ref https://spacy.io/usage/rule-based-matching
-    for match_id, start, end in matches:
-        span = dialogue[start:end]
-        print("RETURNING REGEX: " + str(span.text))
-        return span.text
         
 
 def clean(token):
@@ -196,7 +161,10 @@ def clean(token):
     
     #detect any shortforms and change them into their full words
     new_token = []
-    for word in token.split():
+    
+    if not isinstance(token, list):
+        token = token.split()
+    for word in token:
         if word.lower() in slang_dict:
             new_token.append(slang_dict[word.lower()])
         else:
@@ -236,6 +204,8 @@ except FileNotFoundError:
 config = {"overwrite_ents": True}
 station_list = nlp.add_pipe("entity_ruler", config=config)
 station_list.add_patterns(pattern)
+station_list.add_patterns([{'label': 'TIME', "pattern": [{"TEXT" : {"REGEX": r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'}}]}])
+station_list.add_patterns([{'label': 'DATE', "pattern": [{"TEXT" : {"REGEX": r'^(?:(?:31(\/|-|\.)(?:0?[13578]|1[02]))\1|(?:(?:29|30)(\/|-|\.)(?:0?[13-9]|1[0-2])\2))(?:(?:1[6-9]|[2-9]\d)?\d{2})$|^(?:29(\/|-|\.)0?2\3(?:(?:(?:1[6-9]|[2-9]\d)?(?:0[48]|[2468][048]|[13579][26])|(?:(?:16|[2468][048]|[3579][26])00))))$|^(?:0?[1-9]|1\d|2[0-8])(\/|-|\.)(?:(?:0?[1-9])|(?:1[0-2]))\4(?:(?:1[6-9]|[2-9]\d)?\d{2})$'}}]}])
 
 if __name__ == "__main__":
     speak("greeting")
