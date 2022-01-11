@@ -101,7 +101,7 @@ class Chatbot(KnowledgeEngine):
     @Rule(AND(Fact(reqs='delay'),
              Fact(valid=True)),
              Fact(params=MATCH.params))
-    def find_ticket(self, params):
+    def find_delay(self, params):
         params = unfreeze(params)
         fire_message("PUT DELAY PREDICTION PROCESS HERE")
         engine.reset()
