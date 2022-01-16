@@ -11,6 +11,7 @@ nlp = spacy.load("en_core_web_md")
 from spacy.pipeline import EntityRuler
 
 import re
+from decimal import Decimal
 import numpy as np
 from tensorflow.keras.models import load_model
 import json
@@ -128,7 +129,11 @@ def find_return(start, destination, date, time, rdate, rtime):
     if data == None:
         return "Sorry, no tickets were found for your requirements."
     else:
-        if data[4] < data[0]: #if 2 singles is cheaper than return
+        if data[0] == "":
+            return "You may buy two singles for " + data[4] + ".\nLeaves at " + data[2] + " and arrives at " + data[3] + ".\nPurchase at: " + data[1]
+        price_return = Decimal(re.sub(r'[^\d.]', '', data[0]))
+        price_singles = Decimal(re.sub(r'[^\d.]', '', data[4]))
+        if price_singles < price_return: #if 2 singles is cheaper than return
             return "It is cheaper to buy two singles for " + data[4] + " (a return ticket is " + data[0] + ").\nLeaves at " + data[2] + " and arrives at " + data[3] + ".\nPurchase at: " + data[1]
         else:
             return "The cheapest return ticket is " + data[0] + ".\nLeaves at " + data[2] + " and arrives at " + data[3] + ".\nPurchase at: " + data[1]
