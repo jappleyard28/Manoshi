@@ -36,9 +36,10 @@ slang_dict = {'st':'street', 'rd':'road', 'ave':'avenue',} #TODO add more
 
 #state for storing data about bot's knowledge in a subtopic
 class State:
-    def __init__(self, last_response, params):
+    def __init__(self, last_response, params, req):
         self.last_response = last_response
         self.params = params
+        self.req = req
 
 def parse_input(query):
     query = clean(query) #clean and tokenize user input for parsing
@@ -79,12 +80,12 @@ def speak(intent):
         if pattern['tag'] == intent:
             return np.random.choice(pattern['responses'])
 
-def response(params, query, last_response):
+def response(params, query, last_response, req):
     
     #these are further dialogues when the bot needs to take input
     valid = False #valid is false until enough data is gathered for search
     
-    state = State(None, params)
+    state = State(None, params, req)
 
     state.last_response = last_response
     intent, dialogue = parse_input(query)
@@ -109,6 +110,29 @@ def find_ticket(start, destination, date, time):
         return "Sorry, no tickets were found for your requirements."
     else:
         return "The cheapest ticket is " + data[0] + "\nLeaves at " + data[2] + " and arrives at " + data[3] + "\nPurchase at: " + data[1]
+
+def find_return(start, destination, date, time, rdate, rtime):
+    #some regex for reformatting date/time (remove punctuation/symbols)
+    date = re.sub(r'[^\w\s]', "", date)
+    date.strip()
+    time = re.sub(r'[^\w\s]', "", time)
+    time.strip()
+    rdate = re.sub(r'[^\w\s]', "", rdate)
+    rdate.strip()
+    rtime = re.sub(r'[^\w\s]', "", rtime)
+    rtime.strip()
+    
+    #call the scraper module to get ticket/train info
+    data = scraper2.search_return(start, destination, date, time, rdate, rtime)
+    
+    if data == None:
+        return "Sorry, no tickets were found for your requirements."
+    else:
+        if data[4] < data[0]: #if 2 singles is cheaper than return
+            return "It is cheaper to buy two singles for " + data[4] + " (a return ticket is " + data[0] + ").\nLeaves at " + data[2] + " and arrives at " + data[3] + ".\nPurchase at: " + data[1]
+        else:
+            return "The cheapest return ticket is " + data[0] + ".\nLeaves at " + data[2] + " and arrives at " + data[3] + ".\nPurchase at: " + data[1]
+
 
 def preen(dialogue, state):
     #create an array of null values to represent parameters
@@ -145,12 +169,13 @@ def preen_context(dialogue, ent, state):
     start = ["from", "at"]
     dest = ["to", "toward", "towards", "into"]
     
-    if ent.label_ == "GPE":
-        context = str(dialogue[ent.start - 1])
-        if context in start or state.last_response == state.params[0][3]:
-            return "start"
-        if context in dest or state.last_response == state.params[1][3]:
-            return "destination"
+    if state.req == 'book':
+        if ent.label_ == "GPE":
+            context = str(dialogue[ent.start - 1])
+            if context in start or state.last_response == state.params[0][3]:
+                return "start"
+            if context in dest or state.last_response == state.params[1][3]:
+                return "destination"
     #TODO add time
     return None
         

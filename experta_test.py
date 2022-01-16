@@ -32,15 +32,37 @@ class Chatbot(KnowledgeEngine):
           Fact(message=MATCH.message))
     def booking(self, active, message, intent):
         #define appropriate params [param_name, value, entity_type, question]
-        reqs = [["start", None, "GPE", "Where are you travelling from?\n"],
-                 ["destination", None, "GPE", "Where would you like to travel to?\n"],
-                 ["date", None, "DATE", "What date are you travelling?\n"],
-                 ["time", None, "TIME", "What time do you want to travel? (note: currently only supports 24 hour time in ##:## format)\n"]]
+        reqs = [["start", None, "GPE", "Where are you travelling from?"],
+                 ["destination", None, "GPE", "Where would you like to travel to?"],
+                 ["date", None, "DATE", "What date are you travelling?"],
+                 ["time", None, "TIME", "What time do you want to travel?"]]
         self.modify(active, request=True, reqs='book')
         
         fire_message(nlp.speak('book'))
         message = unfreeze(message)
-        returned_params = nlp.response(reqs, message, None) #parse input for named entities
+        returned_params = nlp.response(reqs, message, None, intent) #parse input for named entities
+
+        is_valid = not any(None in l for l in returned_params)
+        
+        self.declare(Fact(params=returned_params))
+        self.declare(Fact(valid=is_valid))
+        
+    @Rule(AS.intent << Fact(intent='bookreturn'),
+          AS.active << Fact(request=False, reqs=None),
+          Fact(message=MATCH.message))
+    def booking_return(self, active, message, intent):
+        #define appropriate params [param_name, value, entity_type, question]
+        reqs = [["start", None, "GPE", "Where are you travelling from?"],
+                 ["destination", None, "GPE", "Where would you like to travel to?"],
+                 ["date", None, "DATE", "What date are you travelling?"],
+                 ["time", None, "TIME", "What time do you want to travel?"],
+                 ["return_date", None, "DATE", "What date do you want to return?"],
+                 ["return_time", None, "TIME", "What time do you want to return?"]]
+        self.modify(active, request=True, reqs='bookreturn')
+        
+        fire_message(nlp.speak('bookreturn'))
+        message = unfreeze(message)
+        returned_params = nlp.response(reqs, message, None, 'book') #parse input for named entities
 
         is_valid = not any(None in l for l in returned_params)
         
@@ -52,15 +74,14 @@ class Chatbot(KnowledgeEngine):
           Fact(message=MATCH.message))
     def delaying(self, active, message, intent):
         #define appropriate params [param_name, value, entity_type, question]
-        reqs = [["start", None, "GPE", "Where did you depart from?"],
-                 ["destination", None, "GPE", "Where are you travelling to?"],
-                 ["time", None, "TIME", "When was the planned departure time?"],
-                 ["time", None, "TIME", "When is your actual departure time?"]]
+        reqs = [["destination", None, "GPE", "Where is your train now?"],
+                 ["time", None, "TIME", "Where are you travelling to?"],
+                 ["time", None, "TIME", "How long are you delayed?"]]
         self.modify(active, request=True, reqs='delay')
         
         fire_message(nlp.speak('delay'))
         message = unfreeze(message)
-        returned_params = nlp.response(reqs, message, None) #parse input for named entities
+        returned_params = nlp.response(reqs, message, None, intent) #parse input for named entities
 
         is_valid = not any(None in l for l in returned_params)
         
@@ -79,7 +100,7 @@ class Chatbot(KnowledgeEngine):
             while req[1] == None:
                 fire_message(req[3])
                 message = input()
-                returned_params = nlp.response(params, message, req[3])
+                returned_params = nlp.response(params, message, req[3], cur_intent)
                 if returned_params == 'CANCEL':
                     self.modify(cur_intent, intent='cancel')
                     return
@@ -98,12 +119,22 @@ class Chatbot(KnowledgeEngine):
         fire_message(nlp.find_ticket(params[0][1], params[1][1], params[2][1], params[3][1]))
         engine.reset() #reset facts for next interaction
         
+    @Rule(AND(Fact(reqs='bookreturn'),
+             Fact(valid=True)),
+             Fact(params=MATCH.params))
+    def find_return(self, params):
+        params = unfreeze(params)
+        #with all parameters, begin web scraping for ticket
+        fire_message(nlp.find_return(params[0][1], params[1][1], params[2][1], params[3][1], params[4][1], params[5][1]))
+        engine.reset() #reset facts for next interaction
+        
     @Rule(AND(Fact(reqs='delay'),
              Fact(valid=True)),
              Fact(params=MATCH.params))
     def find_delay(self, params):
         params = unfreeze(params)
-        fire_message("PUT DELAY PREDICTION PROCESS HERE")
+        fire_message("PUT DELAY PREDICTION HERE")
+        #fire_message(prediction_guess.predict(params[0][1], params[1][1], params[2][1]))
         engine.reset()
     
     @Rule(AND(Fact(intent='cancel'),

@@ -1,7 +1,7 @@
 {"intents": [
              {"tag": "greeting",
               "patterns": ["Hello", "Hi", "Hey", "Howdy", "What's up"],
-              "responses": ["Hello, how can I help you?", "Hello! Would you like any assistance today?"]
+              "responses": ["Hello, how can I help you?", "Hello! Would you like any assistance today?", "Hello, please let me know if you need any help."]
              },
              {"tag": "help",
               "patterns": ["Help", "What can I ask?", "What do you do?", "I need assistance", "I need help"],
@@ -17,7 +17,11 @@
              },
              {"tag": "book",
               "patterns": ["I want to book a ticket", "I want to travel", "I need help finding a train", "book ticket", "I want to plan a journey", "plan journey", "I want to travel to from", "I want to travel to from at"],
-              "responses": ["Happy to help, I just need to ask some questions."]
+              "responses": ["Happy to help.", "I can help with that.", "Let me help you plan your journey."]
+             },
+             {"tag": "bookreturn",
+              "patterns": ["I want to book a ticket and return", "I want to travel and return", "book a return ticket", "book return ticket", "I want to travel to from and return", "I want to travel to from at return"],
+              "responses": ["Happy to help.", "I can help with that.", "Let me help you plan your journey."]
              },
              {"tag": "delay",
               "patterns": ["My train is delayed", "My train is running late"],
