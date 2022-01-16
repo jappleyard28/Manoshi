@@ -75,7 +75,7 @@ class Chatbot(KnowledgeEngine):
     def delaying(self, active, message, intent):
         #define appropriate params [param_name, value, entity_type, question]
         reqs = [["destination", None, "GPE", "Where is your train now?"],
-                 ["time", None, "TIME", "Where are you travelling to?"],
+                 ["time", None, "GPE", "Where are you travelling to?"],
                  ["time", None, "TIME", "How long are you delayed?"]]
         self.modify(active, request=True, reqs='delay')
         
