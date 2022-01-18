@@ -10,10 +10,11 @@ from experta import *
 from experta.utils import unfreeze
 
 import nlp
+import prediction_guesser
 
 def fire_message(text):
     #will be used to pass chatbot dialogue to ui
-    print("Firing a message: " + text)
+    print(rain is text)
     
 class Chatbot(KnowledgeEngine):  
     @DefFacts()
@@ -133,8 +134,7 @@ class Chatbot(KnowledgeEngine):
              Fact(params=MATCH.params))
     def find_delay(self, params):
         params = unfreeze(params)
-        fire_message("PUT DELAY PREDICTION HERE")
-        #fire_message(prediction_guess.predict(params[0][1], params[1][1], params[2][1]))
+        fire_message(prediction_guesser.get_prediction(params[0][1], params[1][1], params[2][1]))
         engine.reset()
     
     @Rule(AND(Fact(intent='cancel'),
