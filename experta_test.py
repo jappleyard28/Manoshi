@@ -14,7 +14,7 @@ import prediction_guesser
 
 def fire_message(text):
     #will be used to pass chatbot dialogue to ui
-    print(rain is text)
+    print(text)
     
 class Chatbot(KnowledgeEngine):  
     @DefFacts()
