@@ -53,15 +53,6 @@ class ChatUI:
         # send button
         send_button = Button(bottom_label, text="Send", font=FONT_BOLD, width=20, bg=BG_GRAY,command=lambda: self.on_enter_pressed(None, second_frame))
         send_button.grid(row=0, column=1, padx=20, pady=10)
-
-        # Test data for report
-        self.add_message(row_counter, True, intro_msg, second_frame)
-        self.add_message(row_counter, False, "dfaksjl", second_frame)
-        self.add_message(row_counter, True, "Sorry I don't understand", second_frame)
-        self.add_message(row_counter, False, "Find the cheapest train", second_frame)
-        self.add_message(row_counter, True, "Where are you travelling from?", second_frame)
-        self.add_message(row_counter, True, "Liverpool street", second_frame)
-        self.add_message(row_counter, True, "Where are you travelling to?", second_frame)
         
     def run(self):
         root.mainloop()
