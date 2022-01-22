@@ -108,9 +108,9 @@ def find_ticket(start, destination, date, time):
     data = scraper2.search(start, destination, date, time)
     
     if data == None:
-        return "Sorry, no tickets were found for your requirements."
+        return "Sorry, no tickets were found for your request."
     else:
-        return "The cheapest ticket is " + data[0] + "\nLeaves at " + data[2] + " and arrives at " + data[3] + "\nPurchase at: " + data[1]
+        return "The cheapest ticket is " + data[0] + "\nLeaves at " + data[2] + " and arrives at " + data[3] + "\nPurchase at:", data[1]
 
 def find_return(start, destination, date, time, rdate, rtime):
     #some regex for reformatting date/time (remove punctuation/symbols)
@@ -127,16 +127,16 @@ def find_return(start, destination, date, time, rdate, rtime):
     data = scraper2.search_return(start, destination, date, time, rdate, rtime)
     
     if data == None:
-        return "Sorry, no tickets were found for your requirements."
+        return "Sorry, no tickets were found for your request."
     else:
         if data[0] == "":
-            return "You may buy two singles for " + data[4] + ".\nLeaves at " + data[2] + " and arrives at " + data[3] + ".\nPurchase at: " + data[1]
+            return "You may buy two singles for " + data[4] + ".\nLeaves at " + data[2] + " and arrives at " + data[3] + ".\nPurchase at:", data[1]
         price_return = Decimal(re.sub(r'[^\d.]', '', data[0]))
         price_singles = Decimal(re.sub(r'[^\d.]', '', data[4]))
         if price_singles < price_return: #if 2 singles is cheaper than return
-            return "It is cheaper to buy two singles for " + data[4] + " (a return ticket is " + data[0] + ").\nLeaves at " + data[2] + " and arrives at " + data[3] + ".\nPurchase at: " + data[1]
+            return "It is cheaper to buy two singles for " + data[4] + " (a return ticket is " + data[0] + ").\nLeaves at " + data[2] + " and arrives at " + data[3] + ".\nPurchase at:", data[1]
         else:
-            return "The cheapest return ticket is " + data[0] + ".\nLeaves at " + data[2] + " and arrives at " + data[3] + ".\nPurchase at: " + data[1]
+            return "The cheapest return ticket is " + data[0] + ".\nLeaves at " + data[2] + " and arrives at " + data[3] + ".\nPurchase at:", data[1]
 
 
 def preen(dialogue, state):
@@ -239,3 +239,4 @@ station_list.add_patterns([{'label': 'DATE', "pattern": [{"TEXT" : {"REGEX": r'^
 
 if __name__ == "__main__":
     speak("greeting")
+    parse_input("hello i would like to book a ticket")
