@@ -98,8 +98,8 @@ class ChatUI:
         # CREATE ANOTHER FRAME INSIDE THE CANVAS
         frame1 = LabelFrame(second_frame, text=message_header, labelanchor=label_side, font=FONT_BOLD)
         frame1.grid(row=row_no, column=column_no, padx=20, pady=0)
-        my_message = Message(frame1, text=message_contents, font=FONT, aspect=150, justify="left", bg=message_bg)
-        my_message.grid(row=row_no, column=column_no) # spacing between the message and the message border
+        my_message = Message(frame1, text=message_contents, font=FONT, aspect=150, justify="left", bg=message_bg, width=100)
+        my_message.grid(row=row_no, column=column_no, sticky="nsew") # spacing between the message and the message border
         row_counter += 1
 
         if bot_sender:
