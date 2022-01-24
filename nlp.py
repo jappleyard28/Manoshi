@@ -174,13 +174,13 @@ def preen_context(dialogue, ent, state):
     start = ["from", "at"]
     dest = ["to", "toward", "towards", "into"]
     
-    if state.req == 'book':
+    if state.req == 'book' or state.req == 'bookreturn':
         if ent.label_ == "GPE":
             context = str(dialogue[ent.start - 1])
-            if context in start or state.last_response == state.params[0][3]:
-                return "start"
             if context in dest or state.last_response == state.params[1][3]:
                 return "destination"
+            if context in start or state.last_response == state.params[0][3]:
+                return "start"
     #TODO add time
     return None
         
