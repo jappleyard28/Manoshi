@@ -10,14 +10,15 @@ from datetime import timedelta
 import pickle
 import build_prediction as bd
 
+#functions for determining information about the date/time of user
 def is_weekend(day):
     if day > 4:
-        return 1
+        return 1 #is weekend
     return 0
 
 def is_offpeak(hour):
     if hour > 570 and hour < 960:
-        return 1
+        return 1 #is offpeak
     if hour > 1140 or hour < 240:
         return 1
     return 0
@@ -27,6 +28,7 @@ def get_dict():
         stations_dict = pickle.load(f)
     return stations_dict
 
+#convert waterloo stations to csv data abbreviations
 station_code_dict = {
     "dorchester": "DRCHS",
     "wareham": "WARHAM",
@@ -54,20 +56,25 @@ def get_prediction(start, dest, mins_late):
         start = station_code_dict[start]
         dest = station_code_dict[dest]
         
+        #get minutes
         mins_late = [int(s) for s in mins_late.split() if s.isdigit()]
         mins_late = mins_late[0]
         
+        #load our knn prediction model
         with open('knnModel.pickle', 'rb') as f:
             knn = pickle.load(f)
             
+        #get users current date/time
         date = datetime.now()
         time = date.time()
         
+        #get relevant date/time features for input data
         hour = time.hour * 60
         day_of_week = date.weekday()
         is_wknd = is_weekend(day_of_week)
         is_ofpk = is_offpeak(hour)
         
+        #predict journey time, return users time after journey time
         data = [[stations_dict.get(start), stations_dict.get(dest), int(mins_late), hour, day_of_week, is_wknd, is_ofpk]]
         prediction = knn.predict(data)
         prediction = prediction[0]

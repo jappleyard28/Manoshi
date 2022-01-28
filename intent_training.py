@@ -50,6 +50,7 @@ def process():
                 classes.append(intent['tag'])
 
 def bag_of_words():
+    #REF, ADAPTED FROM: https://www.techwithtim.net/tutorials/ai-chatbot/part-1/
     #produces a bag of words model, indicating how many times known words
     #in the grammar appear in an intent pattern, for feeding into a neural
     #network

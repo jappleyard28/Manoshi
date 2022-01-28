@@ -27,7 +27,6 @@ if __name__ == "__main__":
     
     #DEFINE TRAINING DATA FOR X AND Y
     Y = test_pd.iloc[:,10]
-    
     #10 = est_delayed_time, our target value
     Y = np.nan_to_num(Y)
     #alter nan inputs
@@ -37,9 +36,12 @@ if __name__ == "__main__":
     #11 = hour_of_day, #13 = day_of_week, #14 = is_weekend, #15 = is_offpeak
     X = np.nan_to_num(X)
     
+    #create the test train split, 30:70
     X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=.3, random_state=4)
     
+    #using a k nearest neighbours model with 3 neighbours
     knn = KNeighborsRegressor(n_neighbors=3)  
+    #fit model with our training data
     knn.fit(X_train, y_train)
     
         
@@ -53,5 +55,6 @@ if __name__ == "__main__":
     print(df)
     #END OF ACCURACY TESTING
     
+    #save model as pickle file for faster loading in application
     #with open('knnModel.pickle', 'wb') as f:
         #pickle.dump(knn, f)
